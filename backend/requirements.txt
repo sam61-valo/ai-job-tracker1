@@ -18,9 +18,9 @@ google-generativeai==0.8.6
 googleapis-common-protos==1.75.0
 grpcio==1.84.0
 grpcio-status==1.71.2
+gunicorn==26.2.0
 httplib2==0.32.0
 idna==3.20
-mysqlclient==2.3.0
 pillow==12.3.0
 proto-plus==1.28.2
 protobuf==5.29.6
@@ -30,6 +30,7 @@ pycparser==3.11
 pydantic==2.14.0
 pydantic_core==2.50.0
 PyJWT==2.15.1
+PyMySQL==1.2.3
 pyparsing==3.3.3
 pypdf==6.20.0
 python-dotenv==1.2.4
@@ -41,3 +42,4 @@ typing_extensions==4.16.0
 tzdata==2026.5
 uritemplate==4.2.0
 urllib3==2.8.0
+whitenoise==6.12.0
