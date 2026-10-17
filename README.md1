@@ -11,18 +11,6 @@ A full-stack job application tracker with a drag-and-drop Kanban board, a stats 
 
 ---
 
-## Screenshots
-
-| Kanban board | Dashboard |
-|---|---|
-| ![Board](project-py/docs/board.png) | ![Dashboard](project-py/docs/dashboard.png) |
-
-| AI match | Login |
-|---|---|
-| ![AI match](project-py/docs/ai-match.png) | ![Login](project-py/docs/login.png) |
-
----
-
 ## Features
 
 - **Authentication:** register and login with JWT (access and refresh tokens), automatic token refresh, protected routes.
