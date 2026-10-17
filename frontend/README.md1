@@ -1,0 +1,213 @@
+# AI Job Tracker
+
+A full-stack job application tracker with a drag-and-drop Kanban board, a stats dashboard, and an AI resume-vs-job-description match score powered by the Gemini API.
+
+**Live demo:** https://ai-job-tracker1.vercel.app
+**API:** https://ai-job-tracker1-tb95.onrender.com/api
+
+> The app runs on free hosting. If it has been idle, the first request can take up to a minute while the server and database wake up. Please wait and refresh once.
+
+**Demo account:** username `demo`, password `demo1234` (or register your own in a few seconds).
+
+---
+
+## Screenshots
+
+| Kanban board | Dashboard |
+|---|---|
+| ![Board](docs/board.png) | ![Dashboard](docs/dashboard.png) |
+
+| AI match | Login |
+|---|---|
+| ![AI match](docs/ai-match.png) | ![Login](docs/login.png) |
+
+---
+
+## Features
+
+- **Authentication:** register and login with JWT (access and refresh tokens), automatic token refresh, protected routes.
+- **Kanban board:** Applied, Interview, Offer and Rejected columns. Drag a card to change its status (saved instantly with optimistic UI updates).
+- **Application CRUD:** add and delete applications with company, role and notes.
+- **Search and filters:** search across company, role and notes; filter by status; order and paginate results.
+- **Dashboard:** totals, interviews, offers, success rate and a bar chart of applications per status.
+- **AI match:** paste a job description and either paste your resume text or upload a PDF. Gemini returns a match score, matched skills, missing skills and suggestions.
+- **Per-user data isolation:** every user only ever sees their own applications.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js (App Router), TypeScript, Tailwind CSS, TanStack React Query, Axios, @hello-pangea/dnd, Recharts |
+| Backend | Python, Django 5, Django REST Framework, SimpleJWT, django-cors-headers |
+| Database | MySQL (PyMySQL driver) |
+| AI | Google Gemini API, pypdf for PDF text extraction |
+| Deployment | Vercel (frontend), Render (Django with Gunicorn and WhiteNoise), Aiven (managed MySQL) |
+
+---
+
+## Architecture
+
+```
+Browser (Next.js on Vercel)
+   |  HTTPS + JSON, Authorization: Bearer <JWT>
+   v
+Django REST API (Render)
+   |-- CORS middleware        -> allows only the frontend origin
+   |-- JWT authentication     -> sets request.user
+   |-- ViewSets + serializers -> validation and JSON conversion
+   |-- Django ORM             -> SQL queries
+   v
+MySQL (Aiven)                  Gemini API (AI match endpoint)
+```
+
+---
+
+## API endpoints
+
+Base URL: `/api`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/register/` | No | Create an account |
+| POST | `/auth/login/` | No | Get `access` and `refresh` tokens |
+| POST | `/auth/refresh/` | No | Get a new access token |
+| GET | `/applications/` | Yes | List your applications. Supports `?search=`, `?status=`, `?ordering=`, `?page=` |
+| POST | `/applications/` | Yes | Create an application |
+| GET, PUT, PATCH, DELETE | `/applications/<id>/` | Yes | Read, replace, update or delete one application |
+| GET | `/applications/stats/` | Yes | Totals and counts per status |
+| POST | `/ai/match/` | Yes | Resume vs job description analysis (text or PDF) |
+
+---
+
+## Project structure
+
+```
+.
+├── backend/
+│   ├── config/          # settings, root URLs, WSGI
+│   ├── users/           # registration
+│   ├── applications/    # Application model, serializer, ViewSet, stats
+│   ├── ai/              # Gemini match endpoint
+│   ├── certs/           # CA certificate for the managed MySQL connection
+│   ├── manage.py
+│   └── requirements.txt
+└── frontend/
+    ├── app/             # routes: login, register, board, ai, dashboard
+    ├── components/      # AuthForm
+    └── lib/             # Axios client with JWT interceptors, shared types
+```
+
+---
+
+## Run it locally
+
+**Prerequisites:** Python 3.11+, Node.js 20+, MySQL 8, Git.
+
+### 1. Backend
+
+```bash
+git clone https://github.com/Sam61-valo/ai-job-tracker1.git
+cd ai-job-tracker1/backend
+python -m venv venv
+source venv/Scripts/activate        # macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Create the database in MySQL:
+
+```sql
+CREATE DATABASE jobtracker CHARACTER SET utf8mb4;
+```
+
+Create `backend/.env`:
+
+```
+DB_NAME=jobtracker
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_HOST=localhost
+DB_PORT=3306
+GEMINI_API_KEY=your_gemini_key
+GEMINI_MODEL=your_gemini_model_name
+```
+
+Get a free key at https://aistudio.google.com/apikey and check Google's docs for a current model name.
+
+Then:
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser    # optional, for /admin/
+python manage.py runserver
+```
+
+### 2. Frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+Create `frontend/.env.local`:
+
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
+```
+
+```bash
+npm run dev
+```
+
+Open **http://localhost:3000** (use `localhost`, not `127.0.0.1`, so CORS allows the request).
+
+---
+
+## Production configuration
+
+Backend environment variables used in deployment:
+
+| Variable | Purpose |
+|---|---|
+| `SECRET_KEY` | Django secret key |
+| `DEBUG` | `False` in production |
+| `ALLOWED_HOSTS` | Allowed hostnames, for example `.onrender.com` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins |
+| `CSRF_TRUSTED_ORIGINS` | Trusted HTTPS origins for the Django admin |
+| `DB_*` | Database host, port, name, user and password |
+| `DB_SSL` | `True` to enable the encrypted MySQL connection |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini credentials and model name |
+
+Frontend: `NEXT_PUBLIC_API_URL` set to the deployed API base URL (it is read at build time, so redeploy after changing it).
+
+Render build command: `pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate`
+Render start command: `gunicorn config.wsgi:application`
+
+---
+
+## Design decisions
+
+- **Data isolation:** `get_queryset` filters by `request.user`, and `user` is a read-only serializer field set from the token, so users cannot read or create data for someone else.
+- **Stats query:** the stats endpoint uses a `GROUP BY status` aggregate. It calls `order_by()` first to clear the model's default ordering, which would otherwise break the grouping.
+- **Token handling:** an Axios interceptor attaches the access token to every request and refreshes it automatically on a 401.
+- **Optimistic drag and drop:** the board updates instantly when a card is dropped, then syncs with the server.
+- **Secrets:** API keys and database credentials live in environment variables only and are never committed.
+- **Configurable AI model:** the Gemini model name is an environment variable, so a model change needs no code change.
+
+---
+
+## Roadmap
+
+- Automated tests for the API (register, login, CRUD, user isolation)
+- Edit application details and a job detail view
+- Unique email validation and password reset
+- Rate limiting and an upload size limit on the AI endpoint
+- Docker setup and a GitHub Actions CI pipeline
+- Migrate to Google's newer `google-genai` SDK
+
+---
+
+## Author
+
+Built by **Sam**. GitHub: [@Sam61-valo](https://github.com/Sam61-valo)
