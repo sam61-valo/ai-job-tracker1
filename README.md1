@@ -15,11 +15,11 @@ A full-stack job application tracker with a drag-and-drop Kanban board, a stats 
 
 | Kanban board | Dashboard |
 |---|---|
-| ![Board](docs/board.png) | ![Dashboard](docs/dashboard.png) |
+| ![Board](project-py/docs/board.png) | ![Dashboard](project-py/docs/dashboard.png) |
 
 | AI match | Login |
 |---|---|
-| ![AI match](docs/ai-match.png) | ![Login](docs/login.png) |
+| ![AI match](project-py/docs/ai-match.png) | ![Login](project-py/docs/login.png) |
 
 ---
 
